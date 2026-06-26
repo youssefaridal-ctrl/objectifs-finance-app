@@ -6,7 +6,7 @@ import { watchAuth, watchRemoteData, pushRemoteData } from '../firebase/sync';
 export type SalaireRow = { id: string; categorie: string; pourcentage: number; prevu: number; reel: number };
 export type CreditRow = { id: string; nom: string; montant: number; taux: number; duree: number };
 export type EpargneRow = { id: string; mois: string; prevu: number; reel: number };
-export type ObjectifRow = { id: string; rubrique: string; action: string };
+export type ObjectifRow = { id: string; rubrique: string; objectifGlobal: string; periode: string; action: string };
 
 type DataState = {
   salaire: SalaireRow[];
@@ -55,11 +55,34 @@ const defaultData: DataState = {
     { id: '12', mois: 'Décembre', prevu: 0, reel: 0 },
   ],
   objectifs: [
-    { id: '1', rubrique: 'Finance', action: 'Payer 1717 DH/mois crédit' },
-    { id: '2', rubrique: 'Santé', action: '2 séances natation/semaine' },
-    { id: '3', rubrique: 'Famille', action: '1 sortie famille/mois' },
-    { id: '4', rubrique: 'Religion', action: 'Suivi des 5 prières/jour' },
-    { id: '5', rubrique: 'Développement personnel', action: '1 livre + 2h IA + 2h langue/sem' },
+    { id: '1', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2026', action: 'Payer 10 300 DH crédit' },
+    { id: '2', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '1er semestre 2027', action: 'Payer 14 700 DH crédit + 6 000 DH Omra' },
+    { id: '3', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2027', action: 'Payer 14 700 DH crédit + 10 000 DH Omra' },
+    { id: '4', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: 'Année 2028', action: 'Voiture + 30 000 DH de réserve' },
+
+    { id: '5', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: '2e semestre 2026', action: 'Blogging + cuisines + nouveau challenge' },
+    { id: '6', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2027', action: 'Blogging + cuisines' },
+    { id: '7', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2028', action: 'Créer ma propre entreprise' },
+
+    { id: '8', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: '2e semestre 2026', action: 'Nutrition healthy - natation' },
+    { id: '9', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2027', action: 'Salle de sport - natation - cyclisme' },
+    { id: '10', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2028', action: 'Habitude sport et nutrition' },
+
+    { id: '11', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: '2e semestre 2026', action: 'Voyages - sortie - déconnecter après 19h et le weekend' },
+    { id: '12', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2027', action: 'Voyages - lecture - natation ensemble' },
+    { id: '13', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2028', action: 'Voyages - lecture - natation ensemble' },
+
+    { id: '14', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: '2e semestre 2026', action: '5 prières quotidiennes' },
+    { id: '15', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2027', action: '5 prières quotidiennes à l\'heure et à la mosquée' },
+    { id: '16', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2028', action: 'Mémoriser le Saint Coran' },
+
+    { id: '17', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: '2e semestre 2026', action: 'Continuer traitement les dents' },
+    { id: '18', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2027', action: 'Effectuer un examen complet' },
+    { id: '19', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2028', action: 'Effectuer un examen complet - poids 85kg' },
+
+    { id: '20', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: '2e semestre 2026', action: 'Lecture et intelligence artificielle - langue FR/AN' },
+    { id: '21', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2027', action: 'Lecture et intelligence artificielle - langue FR/AN' },
+    { id: '22', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2028', action: 'Lecture et intelligence artificielle - langue FR/AN' },
   ],
 };
 
@@ -88,7 +111,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) {
         try {
-          setData(JSON.parse(raw));
+          const parsed = JSON.parse(raw);
+          const objectifsOutdated = !parsed.objectifs?.length || !('periode' in parsed.objectifs[0]);
+          setData({
+            ...parsed,
+            objectifs: objectifsOutdated ? defaultData.objectifs : parsed.objectifs,
+          });
         } catch {}
       }
       setLoaded(true);

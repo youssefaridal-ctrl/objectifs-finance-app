@@ -22,6 +22,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "experiments": {
+      "baseUrl": "/objectifs-finance-app"
+    },
     "plugins": [
       "expo-web-browser"
     ]
