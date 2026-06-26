@@ -10,12 +10,14 @@ const palette = ['#85B7EB', '#97C459', '#F0997B', '#D4537E', '#7F77DD', '#B4B2A9
 
 export default function FinanceOverviewScreen() {
   const { data } = useData();
-  const salaireTotal = data.salaire.reduce((s, r) => s + r.prevu, 0);
-  const resteNonAffecte = 10000 - salaireTotal;
+  const moisCourant = data.salaireMois[0];
+  const categories = moisCourant?.categories ?? [];
+  const salaireTotal = categories.reduce((s, r) => s + r.prevu, 0);
+  const resteNonAffecte = (moisCourant?.salaireNet ?? 0) - salaireTotal;
   const creditRestant = data.credits.reduce((s, c) => s + c.montant, 0);
   const epargneCumulee = data.epargne.reduce((s, m) => s + m.reel, 0);
 
-  const legend = data.salaire.map((r, i) => ({ label: r.categorie, value: r.reel, color: palette[i % palette.length] }));
+  const legend = categories.map((r, i) => ({ label: r.categorie, value: r.reel, color: palette[i % palette.length] }));
 
   return (
     <View style={styles.container}>
@@ -24,7 +26,7 @@ export default function FinanceOverviewScreen() {
         <View style={styles.gridTwo}>
           <Card style={styles.metricCard}>
             <Text style={styles.metricLabel}>Salaire net</Text>
-            <Text style={styles.metricValue}>10 000 DH</Text>
+            <Text style={styles.metricValue}>{(moisCourant?.salaireNet ?? 0).toLocaleString()} DH</Text>
           </Card>
           <Card style={styles.metricCard}>
             <Text style={styles.metricLabel}>Reste non affecté</Text>

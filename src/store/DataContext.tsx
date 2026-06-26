@@ -4,28 +4,47 @@ import { isFirebaseConfigured } from '../firebase/config';
 import { watchAuth, watchRemoteData, pushRemoteData } from '../firebase/sync';
 
 export type SalaireRow = { id: string; categorie: string; pourcentage: number; prevu: number; reel: number };
+export type SalaireMonth = { id: string; mois: string; salaireNet: number; categories: SalaireRow[] };
 export type CreditRow = { id: string; nom: string; montant: number; taux: number; duree: number };
 export type EpargneRow = { id: string; mois: string; prevu: number; reel: number };
 export type ObjectifRow = { id: string; rubrique: string; objectifGlobal: string; periode: string; action: string };
 
 type DataState = {
-  salaire: SalaireRow[];
+  salaireMois: SalaireMonth[];
   credits: CreditRow[];
   epargne: EpargneRow[];
   objectifs: ObjectifRow[];
 };
 
+const MOIS_ORDRE = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+];
+
+export function moisSuivant(mois: string): string {
+  const idx = MOIS_ORDRE.findIndex((m) => m.toLowerCase() === mois.trim().toLowerCase());
+  if (idx === -1) return 'Mois suivant';
+  return MOIS_ORDRE[(idx + 1) % MOIS_ORDRE.length];
+}
+
 const defaultData: DataState = {
-  salaire: [
-    { id: '1', categorie: 'Logement', pourcentage: 30, prevu: 3000, reel: 1825 },
-    { id: '2', categorie: 'Alimentation', pourcentage: 15, prevu: 1500, reel: 1500 },
-    { id: '3', categorie: 'Transport', pourcentage: 10, prevu: 1000, reel: 700 },
-    { id: '4', categorie: 'Crédits / dettes', pourcentage: 10, prevu: 1000, reel: 1000 },
-    { id: '5', categorie: 'Épargne', pourcentage: 10, prevu: 1000, reel: 1000 },
-    { id: '6', categorie: 'Paradis', pourcentage: 5, prevu: 500, reel: 500 },
-    { id: '7', categorie: 'Loisirs / divers', pourcentage: 10, prevu: 1000, reel: 400 },
-    { id: '8', categorie: 'Santé / assurance', pourcentage: 5, prevu: 500, reel: 0 },
-    { id: '9', categorie: 'Imprévus', pourcentage: 5, prevu: 500, reel: 0 },
+  salaireMois: [
+    {
+      id: '1',
+      mois: 'Mai',
+      salaireNet: 10000,
+      categories: [
+        { id: '1', categorie: 'Logement', pourcentage: 30, prevu: 3000, reel: 1825 },
+        { id: '2', categorie: 'Alimentation', pourcentage: 15, prevu: 1500, reel: 1500 },
+        { id: '3', categorie: 'Transport', pourcentage: 10, prevu: 1000, reel: 700 },
+        { id: '4', categorie: 'Crédits / dettes', pourcentage: 10, prevu: 1000, reel: 1000 },
+        { id: '5', categorie: 'Épargne', pourcentage: 10, prevu: 1000, reel: 1000 },
+        { id: '6', categorie: 'Paradis', pourcentage: 5, prevu: 500, reel: 500 },
+        { id: '7', categorie: 'Loisirs / divers', pourcentage: 10, prevu: 1000, reel: 400 },
+        { id: '8', categorie: 'Santé / assurance', pourcentage: 5, prevu: 500, reel: 0 },
+        { id: '9', categorie: 'Imprévus', pourcentage: 5, prevu: 500, reel: 0 },
+      ],
+    },
   ],
   credits: [
     { id: '1', nom: 'MOUAD IMPOT', montant: 5000, taux: 5, duree: 7 },
@@ -92,8 +111,11 @@ type DataContextType = {
   data: DataState;
   loaded: boolean;
   cloudStatus: 'disabled' | 'connecting' | 'synced';
-  upsertRow: <K extends keyof DataState>(table: K, row: DataState[K][number]) => void;
-  deleteRow: (table: keyof DataState, id: string) => void;
+  upsertRow: <K extends Exclude<keyof DataState, 'salaireMois'>>(table: K, row: DataState[K][number]) => void;
+  deleteRow: (table: Exclude<keyof DataState, 'salaireMois'>, id: string) => void;
+  upsertSalaireCategorie: (moisId: string, row: SalaireRow) => void;
+  deleteSalaireCategorie: (moisId: string, id: string) => void;
+  cloturerMoisSalaire: () => void;
 };
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -113,8 +135,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(raw);
           const objectifsOutdated = !parsed.objectifs?.length || !('periode' in parsed.objectifs[0]);
+          const salaireMois = parsed.salaireMois?.length
+            ? parsed.salaireMois
+            : parsed.salaire
+            ? [{ id: '1', mois: 'Mai', salaireNet: 10000, categories: parsed.salaire }]
+            : defaultData.salaireMois;
           setData({
             ...parsed,
+            salaireMois,
             objectifs: objectifsOutdated ? defaultData.objectifs : parsed.objectifs,
           });
         } catch {}
@@ -162,12 +190,59 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const deleteRow = useCallback((table: keyof DataState, id: string) => {
+  const deleteRow = useCallback((table: Exclude<keyof DataState, 'salaireMois'>, id: string) => {
     setData((prev) => ({ ...prev, [table]: (prev[table] as any[]).filter((r) => r.id !== id) }));
   }, []);
 
+  const upsertSalaireCategorie = useCallback((moisId: string, row: SalaireRow) => {
+    setData((prev) => ({
+      ...prev,
+      salaireMois: prev.salaireMois.map((m) => {
+        if (m.id !== moisId) return m;
+        const idx = m.categories.findIndex((c) => c.id === row.id);
+        const categories =
+          idx >= 0 ? m.categories.map((c) => (c.id === row.id ? row : c)) : [...m.categories, row];
+        return { ...m, categories };
+      }),
+    }));
+  }, []);
+
+  const deleteSalaireCategorie = useCallback((moisId: string, id: string) => {
+    setData((prev) => ({
+      ...prev,
+      salaireMois: prev.salaireMois.map((m) =>
+        m.id !== moisId ? m : { ...m, categories: m.categories.filter((c) => c.id !== id) }
+      ),
+    }));
+  }, []);
+
+  const cloturerMoisSalaire = useCallback(() => {
+    setData((prev) => {
+      const current = prev.salaireMois[0];
+      if (!current) return prev;
+      const nouveauMois: SalaireMonth = {
+        id: String(Date.now()),
+        mois: moisSuivant(current.mois),
+        salaireNet: current.salaireNet,
+        categories: current.categories.map((c) => ({ ...c, id: `${Date.now()}-${c.id}`, reel: 0 })),
+      };
+      return { ...prev, salaireMois: [nouveauMois, ...prev.salaireMois] };
+    });
+  }, []);
+
   return (
-    <DataContext.Provider value={{ data, loaded, cloudStatus, upsertRow, deleteRow }}>
+    <DataContext.Provider
+      value={{
+        data,
+        loaded,
+        cloudStatus,
+        upsertRow,
+        deleteRow,
+        upsertSalaireCategorie,
+        deleteSalaireCategorie,
+        cloturerMoisSalaire,
+      }}
+    >
       {children}
     </DataContext.Provider>
   );
