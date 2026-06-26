@@ -3,21 +3,38 @@ import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import Card from '../components/Card';
 import Donut from '../components/Donut';
+import ProgressBar from '../components/ProgressBar';
 import { colors, fonts } from '../theme';
 import { useData } from '../store/DataContext';
 
 const palette = ['#85B7EB', '#97C459', '#F0997B', '#D4537E', '#7F77DD', '#B4B2A9', '#EF9F27', '#5DCAA5', '#ED93B1'];
 
+const rubriqueColor: Record<string, string> = {
+  Finance: '#378ADD',
+  Santé: '#639922',
+  Famille: '#D4537E',
+  Religion: '#7F77DD',
+  'Développement personnel': '#BA7517',
+};
+
 export default function FinanceOverviewScreen() {
   const { data } = useData();
   const moisCourant = data.salaireMois[0];
   const categories = moisCourant?.categories ?? [];
+  const salaireNet = moisCourant?.salaireNet ?? 0;
   const salaireTotal = categories.reduce((s, r) => s + r.prevu, 0);
-  const resteNonAffecte = (moisCourant?.salaireNet ?? 0) - salaireTotal;
+  const resteNonAffecte = salaireNet - salaireTotal;
   const creditRestant = data.credits.reduce((s, c) => s + c.montant, 0);
   const epargneCumulee = data.epargne.reduce((s, m) => s + m.reel, 0);
 
   const legend = categories.map((r, i) => ({ label: r.categorie, value: r.reel, color: palette[i % palette.length] }));
+
+  const rubriques = Array.from(new Set(data.objectifs.map((o) => o.rubrique)));
+  const avancementParRubrique = rubriques.map((rub) => {
+    const rows = data.objectifs.filter((o) => o.rubrique === rub);
+    const done = rows.filter((o) => o.fait).length;
+    return { rubrique: rub, percent: Math.round((done / rows.length) * 100), done, total: rows.length };
+  });
 
   return (
     <View style={styles.container}>
@@ -26,7 +43,7 @@ export default function FinanceOverviewScreen() {
         <View style={styles.gridTwo}>
           <Card style={styles.metricCard}>
             <Text style={styles.metricLabel}>Salaire net</Text>
-            <Text style={styles.metricValue}>{(moisCourant?.salaireNet ?? 0).toLocaleString()} DH</Text>
+            <Text style={styles.metricValue}>{salaireNet.toLocaleString()} DH</Text>
           </Card>
           <Card style={styles.metricCard}>
             <Text style={styles.metricLabel}>Reste non affecté</Text>
@@ -53,6 +70,50 @@ export default function FinanceOverviewScreen() {
             ))}
           </View>
         </Card>
+
+        <Text style={styles.sectionTitle}>Salaire — % prévu vs % réel</Text>
+        <Card>
+          {categories.map((c) => {
+            const pctReel = salaireNet > 0 ? Math.round((c.reel / salaireNet) * 100) : 0;
+            return (
+              <View key={c.id} style={styles.detailRow}>
+                <Text style={styles.detailLabel}>{c.categorie}</Text>
+                <Text style={styles.detailValue}>
+                  Prévu {c.pourcentage}% · Réel {pctReel}%
+                </Text>
+              </View>
+            );
+          })}
+        </Card>
+
+        <Text style={styles.sectionTitle}>Crédits — avancement</Text>
+        <Card>
+          {data.credits.map((c) => {
+            const avancement = c.duree > 0 ? Math.round((c.moisPayes / c.duree) * 100) : 0;
+            return (
+              <View key={c.id} style={{ marginBottom: 8 }}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{c.nom}</Text>
+                  <Text style={styles.detailValue}>{avancement}% ({c.moisPayes}/{c.duree} mois)</Text>
+                </View>
+                <ProgressBar percent={avancement} color="#F0997B" />
+              </View>
+            );
+          })}
+        </Card>
+
+        <Text style={styles.sectionTitle}>Avancement des objectifs par rubrique</Text>
+        <Card>
+          {avancementParRubrique.map((r) => (
+            <View key={r.rubrique} style={{ marginBottom: 8 }}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>{r.rubrique}</Text>
+                <Text style={styles.detailValue}>{r.percent}% ({r.done}/{r.total})</Text>
+              </View>
+              <ProgressBar percent={r.percent} color={rubriqueColor[r.rubrique] ?? '#378ADD'} />
+            </View>
+          ))}
+        </Card>
       </ScrollView>
     </View>
   );
@@ -69,4 +130,8 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: fonts.regular },
+  sectionTitle: { fontSize: 13, fontWeight: '600', fontFamily: fonts.bold, color: colors.textSecondary, marginTop: 18, marginBottom: 8 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  detailLabel: { fontSize: 12, fontWeight: '600', fontFamily: fonts.bold },
+  detailValue: { fontSize: 11, color: colors.textSecondary, fontFamily: fonts.regular },
 });

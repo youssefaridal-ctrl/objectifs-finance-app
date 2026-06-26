@@ -38,7 +38,7 @@ function groupItems(items: ObjectifRow[]) {
 }
 
 export default function ObjectifsScreen() {
-  const { data, upsertRow, deleteRow } = useData();
+  const { data, upsertRow, deleteRow, toggleObjectifFait } = useData();
   const items = data.objectifs;
   const groups = groupItems(items);
   const [editing, setEditing] = useState<ObjectifRow | null>(null);
@@ -93,6 +93,7 @@ export default function ObjectifsScreen() {
       objectifGlobal: values.objectifGlobal,
       periode: values.periode,
       action: values.action,
+      fait: editing?.fait ?? false,
     });
     setShowModal(false);
   };
@@ -103,16 +104,38 @@ export default function ObjectifsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {groups.map((g) => {
           const style = rubriqueStyle[g.rubrique] ?? { bg: colors.background, color: colors.textPrimary };
+          const doneCount = g.rows.filter((r) => r.fait).length;
+          const avancement = Math.round((doneCount / g.rows.length) * 100);
           return (
             <View key={g.rubrique + g.objectifGlobal} style={[styles.groupCard, { backgroundColor: style.bg }]}>
-              <Text style={[styles.rubriqueLabel, { color: style.color }]}>{g.rubrique}</Text>
+              <View style={styles.rowBetween}>
+                <Text style={[styles.rubriqueLabel, { color: style.color }]}>{g.rubrique}</Text>
+                <Text style={[styles.avancement, { color: style.color }]}>{avancement}%</Text>
+              </View>
               <Text style={[styles.objectifGlobal, { color: style.color }]}>{g.objectifGlobal}</Text>
               {g.rows.map((row) => (
-                <TouchableOpacity key={row.id} style={styles.periodRow} onPress={() => openEdit(row)}>
+                <View key={row.id} style={styles.periodRow}>
+                  <TouchableOpacity onPress={() => toggleObjectifFait(row.id)}>
+                    <Ionicons
+                      name={row.fait ? 'checkbox' : 'square-outline'}
+                      size={16}
+                      color={style.color}
+                    />
+                  </TouchableOpacity>
                   <Text style={[styles.periode, { color: style.color }]}>{row.periode}</Text>
-                  <Text style={[styles.action, { color: style.color }]}>{row.action}</Text>
-                  <Ionicons name="create-outline" size={13} color={style.color} />
-                </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.action,
+                      { color: style.color },
+                      row.fait ? { textDecorationLine: 'line-through', opacity: 0.6 } : null,
+                    ]}
+                  >
+                    {row.action}
+                  </Text>
+                  <TouchableOpacity onPress={() => openEdit(row)}>
+                    <Ionicons name="create-outline" size={13} color={style.color} />
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
           );
@@ -160,7 +183,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 32 },
   groupCard: { borderRadius: 10, padding: 12, marginBottom: 10 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rubriqueLabel: { fontSize: 13, fontWeight: '700', fontFamily: fonts.bold },
+  avancement: { fontSize: 12, fontWeight: '700' },
   objectifGlobal: { fontSize: 11, marginTop: 2, marginBottom: 8, fontFamily: fonts.regular, opacity: 0.9 },
   periodRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 5, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.07)' },
   periode: { fontSize: 11, fontWeight: '700', width: 110 },

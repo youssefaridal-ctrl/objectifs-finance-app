@@ -3,7 +3,7 @@ import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
 import Card from '../components/Card';
-import ProgressBar from '../components/ProgressBar';
+import CompareBar from '../components/CompareBar';
 import RowFormModal from '../components/RowFormModal';
 import { colors, fonts } from '../theme';
 import { useData, CreditRow } from '../store/DataContext';
@@ -14,6 +14,7 @@ function toValues(r?: CreditRow): Record<string, string> {
     montant: r ? String(r.montant) : '',
     taux: r ? String(r.taux) : '5',
     duree: r ? String(r.duree) : '',
+    moisPayes: r ? String(r.moisPayes) : '0',
   };
 }
 
@@ -46,6 +47,7 @@ export default function CreditsScreen() {
       montant: Number(values.montant) || 0,
       taux: Number(values.taux) || 0,
       duree: Number(values.duree) || 0,
+      moisPayes: Math.min(Number(values.moisPayes) || 0, Number(values.duree) || 0),
     });
     setShowModal(false);
   };
@@ -54,18 +56,27 @@ export default function CreditsScreen() {
     <View style={styles.container}>
       <ScreenHeader title="Gestion des crédits" subtitle={`${credits.length} crédits en cours`} />
       <ScrollView contentContainerStyle={styles.content}>
-        {credits.map((c) => (
-          <Card key={c.id} style={{ marginBottom: 10 }}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.nom}>{c.nom}</Text>
-              <TouchableOpacity onPress={() => openEdit(c)}>
-                <Ionicons name="create-outline" size={14} color={colors.blueAccent} />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.meta}>{c.montant} DH · {c.taux}% · {c.duree} mois</Text>
-            <ProgressBar percent={30} color="#F0997B" />
-          </Card>
-        ))}
+        {credits.map((c) => {
+          const paye = c.duree > 0 ? (c.montant / c.duree) * c.moisPayes : 0;
+          return (
+            <Card key={c.id} style={{ marginBottom: 10 }}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.nom}>{c.nom}</Text>
+                <TouchableOpacity onPress={() => openEdit(c)}>
+                  <Ionicons name="create-outline" size={14} color={colors.blueAccent} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.meta}>{c.montant.toLocaleString()} DH · {c.taux}% · {c.moisPayes}/{c.duree} mois</Text>
+              <CompareBar
+                doneValue={paye}
+                totalValue={c.montant}
+                doneColor="#D4537E"
+                doneLabel="Réglé"
+                remainingLabel="Reste à payer"
+              />
+            </Card>
+          );
+        })}
 
         <Card style={styles.totalsCard}>
           <View style={styles.rowBetween}>
@@ -96,6 +107,7 @@ export default function CreditsScreen() {
           { key: 'montant', label: 'Montant (DH)', keyboardType: 'numeric' },
           { key: 'taux', label: 'Taux annuel (%)', keyboardType: 'numeric' },
           { key: 'duree', label: 'Durée (mois)', keyboardType: 'numeric' },
+          { key: 'moisPayes', label: 'Mois déjà payés', keyboardType: 'numeric' },
         ]}
         initialValues={toValues(editing ?? undefined)}
         onCancel={() => setShowModal(false)}
@@ -119,6 +131,7 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   nom: { fontSize: 13, fontWeight: '600', fontFamily: fonts.bold },
   meta: { fontSize: 11, color: colors.textSecondary, marginBottom: 6, fontFamily: fonts.regular },
+  progressLabel: { fontSize: 10, color: colors.textSecondary, fontFamily: fonts.regular },
   totalsCard: { marginTop: 4, marginBottom: 14 },
   totalsLabel: { fontSize: 12, fontFamily: fonts.regular },
   totalsValue: { fontSize: 12, fontFamily: fonts.regular },

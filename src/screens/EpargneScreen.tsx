@@ -3,6 +3,8 @@ import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
 import Card from '../components/Card';
+import CompareBar from '../components/CompareBar';
+import Badge from '../components/Badge';
 import RowFormModal from '../components/RowFormModal';
 import { colors, fonts } from '../theme';
 import { useData, EpargneRow } from '../store/DataContext';
@@ -21,9 +23,9 @@ export default function EpargneScreen() {
   const [editing, setEditing] = useState<EpargneRow | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const max = Math.max(1000, ...mois.map((m) => m.reel));
   const cumul = mois.reduce((s, m) => s + m.reel, 0);
-  const ecart = mois.reduce((s, m) => s + (m.reel - m.prevu), 0);
+  const totalPrevu = mois.reduce((s, m) => s + m.prevu, 0);
+  const ecart = cumul - totalPrevu;
 
   const openEdit = (r: EpargneRow) => {
     setEditing(r);
@@ -43,30 +45,53 @@ export default function EpargneScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Gestion de l'épargne" subtitle="Objectif mensuel : 1 000 DH" />
+      <ScreenHeader title="Gestion de l'épargne" subtitle="Suivi mensuel" />
       <ScrollView contentContainerStyle={styles.content}>
-        <Card>
-          <View style={styles.chart}>
-            {mois.map((m) => (
-              <TouchableOpacity key={m.id} style={styles.barCol} onPress={() => openEdit(m)}>
-                <View style={[styles.bar, { height: (m.reel / max) * 90 || 2 }]} />
-                <Text style={styles.barLabel}>{m.mois.slice(0, 3)}</Text>
-              </TouchableOpacity>
-            ))}
+        <Card style={{ backgroundColor: colors.greenBg, borderColor: colors.greenBorder, marginBottom: 14 }}>
+          <View style={styles.rowBetween}>
+            <Text style={[styles.objectifTitle, { color: colors.greenText }]}>Objectif annuel</Text>
+            <Text style={[styles.objectifEcart, { color: ecart >= 0 ? colors.greenText : colors.redText }]}>
+              {ecart >= 0 ? '+' : ''}{ecart.toLocaleString()} DH
+            </Text>
           </View>
-          <Text style={styles.hint}>Touchez un mois pour le modifier</Text>
+          <CompareBar
+            doneValue={cumul}
+            totalValue={totalPrevu}
+            doneColor="#3b6d11"
+            doneLabel="Épargné"
+            remainingLabel="Objectif restant"
+          />
         </Card>
 
-        <View style={styles.gridTwo}>
-          <Card style={{ flex: 1, backgroundColor: colors.greenBg, borderColor: colors.greenBorder }}>
-            <Text style={[styles.miniLabel, { color: colors.greenText }]}>CUMUL ANNÉE</Text>
-            <Text style={[styles.miniValue, { color: colors.greenTextDark }]}>{cumul.toLocaleString()} DH</Text>
-          </Card>
-          <Card style={{ flex: 1 }}>
-            <Text style={[styles.miniLabel, { color: colors.textSecondary }]}>ÉCART</Text>
-            <Text style={[styles.miniValue, { color: colors.textPrimary }]}>{ecart.toLocaleString()} DH</Text>
-          </Card>
-        </View>
+        {mois.map((m) => {
+          const atteint = m.reel >= m.prevu && m.prevu > 0;
+          return (
+            <TouchableOpacity key={m.id} onPress={() => openEdit(m)}>
+              <Card style={{ marginBottom: 10 }}>
+                <View style={styles.rowBetween}>
+                  <View style={styles.moisHeader}>
+                    <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                    <Text style={styles.moisLabel}>{m.mois}</Text>
+                  </View>
+                  {m.prevu > 0 && (
+                    <Badge
+                      label={atteint ? 'Objectif atteint' : 'En cours'}
+                      bg={atteint ? colors.successChipBg : colors.amberChipBg}
+                      color={atteint ? colors.successChipText : colors.amberChipText}
+                    />
+                  )}
+                </View>
+                <CompareBar
+                  doneValue={m.reel}
+                  totalValue={m.prevu}
+                  doneColor={atteint ? '#639922' : '#EF9F27'}
+                  doneLabel="Réel"
+                  remainingLabel="Prévu restant"
+                />
+              </Card>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       <RowFormModal
@@ -95,12 +120,9 @@ export default function EpargneScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 32 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', height: 120, justifyContent: 'space-between' },
-  barCol: { alignItems: 'center', flex: 1 },
-  bar: { width: 10, backgroundColor: '#639922', borderRadius: 3, marginBottom: 4 },
-  barLabel: { fontSize: 8, color: colors.textMuted, fontFamily: fonts.regular },
-  hint: { fontSize: 10, color: colors.textMuted, textAlign: 'center', marginTop: 8, fontFamily: fonts.regular },
-  gridTwo: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  miniLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
-  miniValue: { fontSize: 16, fontWeight: '700', marginVertical: 4 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  objectifTitle: { fontSize: 13, fontWeight: '700', fontFamily: fonts.bold },
+  objectifEcart: { fontSize: 13, fontWeight: '700' },
+  moisHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  moisLabel: { fontSize: 13, fontWeight: '600', fontFamily: fonts.bold },
 });

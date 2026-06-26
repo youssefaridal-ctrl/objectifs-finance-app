@@ -5,9 +5,9 @@ import { watchAuth, watchRemoteData, pushRemoteData } from '../firebase/sync';
 
 export type SalaireRow = { id: string; categorie: string; pourcentage: number; prevu: number; reel: number };
 export type SalaireMonth = { id: string; mois: string; salaireNet: number; categories: SalaireRow[] };
-export type CreditRow = { id: string; nom: string; montant: number; taux: number; duree: number };
+export type CreditRow = { id: string; nom: string; montant: number; taux: number; duree: number; moisPayes: number };
 export type EpargneRow = { id: string; mois: string; prevu: number; reel: number };
-export type ObjectifRow = { id: string; rubrique: string; objectifGlobal: string; periode: string; action: string };
+export type ObjectifRow = { id: string; rubrique: string; objectifGlobal: string; periode: string; action: string; fait: boolean };
 
 type DataState = {
   salaireMois: SalaireMonth[];
@@ -47,17 +47,17 @@ const defaultData: DataState = {
     },
   ],
   credits: [
-    { id: '1', nom: 'MOUAD IMPOT', montant: 5000, taux: 5, duree: 7 },
-    { id: '2', nom: 'LAILA ARIDAL', montant: 1500, taux: 5, duree: 7 },
-    { id: '3', nom: 'SANAA ARIDAL', montant: 1800, taux: 5, duree: 7 },
-    { id: '4', nom: 'ZBAIDI ABDELHADI', montant: 1000, taux: 5, duree: 7 },
-    { id: '5', nom: 'BOUSSAGUI MOHAMMED', montant: 1000, taux: 5, duree: 7 },
-    { id: '6', nom: 'KHALI MOSTAFA', montant: 2100, taux: 5, duree: 12 },
-    { id: '7', nom: 'EL MAATI', montant: 2000, taux: 5, duree: 12 },
-    { id: '8', nom: 'ZBAIDI ABDELHADI', montant: 3250, taux: 5, duree: 12 },
-    { id: '9', nom: 'ZAKARIA CANADA', montant: 5000, taux: 5, duree: 12 },
-    { id: '10', nom: 'HAYAT ARIDAL', montant: 9000, taux: 5, duree: 12 },
-    { id: '11', nom: 'STE VIE', montant: 7350, taux: 5, duree: 12 },
+    { id: '1', nom: 'MOUAD IMPOT', montant: 5000, taux: 5, duree: 7, moisPayes: 0 },
+    { id: '2', nom: 'LAILA ARIDAL', montant: 1500, taux: 5, duree: 7, moisPayes: 0 },
+    { id: '3', nom: 'SANAA ARIDAL', montant: 1800, taux: 5, duree: 7, moisPayes: 0 },
+    { id: '4', nom: 'ZBAIDI ABDELHADI', montant: 1000, taux: 5, duree: 7, moisPayes: 0 },
+    { id: '5', nom: 'BOUSSAGUI MOHAMMED', montant: 1000, taux: 5, duree: 7, moisPayes: 0 },
+    { id: '6', nom: 'KHALI MOSTAFA', montant: 2100, taux: 5, duree: 12, moisPayes: 0 },
+    { id: '7', nom: 'EL MAATI', montant: 2000, taux: 5, duree: 12, moisPayes: 0 },
+    { id: '8', nom: 'ZBAIDI ABDELHADI', montant: 3250, taux: 5, duree: 12, moisPayes: 0 },
+    { id: '9', nom: 'ZAKARIA CANADA', montant: 5000, taux: 5, duree: 12, moisPayes: 0 },
+    { id: '10', nom: 'HAYAT ARIDAL', montant: 9000, taux: 5, duree: 12, moisPayes: 0 },
+    { id: '11', nom: 'STE VIE', montant: 7350, taux: 5, duree: 12, moisPayes: 0 },
   ],
   epargne: [
     { id: '1', mois: 'Janvier', prevu: 1000, reel: 1000 },
@@ -74,34 +74,34 @@ const defaultData: DataState = {
     { id: '12', mois: 'Décembre', prevu: 0, reel: 0 },
   ],
   objectifs: [
-    { id: '1', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2026', action: 'Payer 10 300 DH crédit' },
-    { id: '2', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '1er semestre 2027', action: 'Payer 14 700 DH crédit + 6 000 DH Omra' },
-    { id: '3', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2027', action: 'Payer 14 700 DH crédit + 10 000 DH Omra' },
-    { id: '4', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: 'Année 2028', action: 'Voiture + 30 000 DH de réserve' },
+    { id: '1', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2026', action: 'Payer 10 300 DH crédit', fait: false },
+    { id: '2', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '1er semestre 2027', action: 'Payer 14 700 DH crédit + 6 000 DH Omra', fait: false },
+    { id: '3', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2027', action: 'Payer 14 700 DH crédit + 10 000 DH Omra', fait: false },
+    { id: '4', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: 'Année 2028', action: 'Voiture + 30 000 DH de réserve', fait: false },
 
-    { id: '5', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: '2e semestre 2026', action: 'Blogging + cuisines + nouveau challenge' },
-    { id: '6', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2027', action: 'Blogging + cuisines' },
-    { id: '7', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2028', action: 'Créer ma propre entreprise' },
+    { id: '5', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: '2e semestre 2026', action: 'Blogging + cuisines + nouveau challenge', fait: false },
+    { id: '6', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2027', action: 'Blogging + cuisines', fait: false },
+    { id: '7', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2028', action: 'Créer ma propre entreprise', fait: false },
 
-    { id: '8', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: '2e semestre 2026', action: 'Nutrition healthy - natation' },
-    { id: '9', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2027', action: 'Salle de sport - natation - cyclisme' },
-    { id: '10', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2028', action: 'Habitude sport et nutrition' },
+    { id: '8', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: '2e semestre 2026', action: 'Nutrition healthy - natation', fait: false },
+    { id: '9', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2027', action: 'Salle de sport - natation - cyclisme', fait: false },
+    { id: '10', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2028', action: 'Habitude sport et nutrition', fait: false },
 
-    { id: '11', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: '2e semestre 2026', action: 'Voyages - sortie - déconnecter après 19h et le weekend' },
-    { id: '12', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2027', action: 'Voyages - lecture - natation ensemble' },
-    { id: '13', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2028', action: 'Voyages - lecture - natation ensemble' },
+    { id: '11', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: '2e semestre 2026', action: 'Voyages - sortie - déconnecter après 19h et le weekend', fait: false },
+    { id: '12', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2027', action: 'Voyages - lecture - natation ensemble', fait: false },
+    { id: '13', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2028', action: 'Voyages - lecture - natation ensemble', fait: false },
 
-    { id: '14', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: '2e semestre 2026', action: '5 prières quotidiennes' },
-    { id: '15', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2027', action: '5 prières quotidiennes à l\'heure et à la mosquée' },
-    { id: '16', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2028', action: 'Mémoriser le Saint Coran' },
+    { id: '14', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: '2e semestre 2026', action: '5 prières quotidiennes', fait: false },
+    { id: '15', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2027', action: '5 prières quotidiennes à l\'heure et à la mosquée', fait: false },
+    { id: '16', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2028', action: 'Mémoriser le Saint Coran', fait: false },
 
-    { id: '17', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: '2e semestre 2026', action: 'Continuer traitement les dents' },
-    { id: '18', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2027', action: 'Effectuer un examen complet' },
-    { id: '19', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2028', action: 'Effectuer un examen complet - poids 85kg' },
+    { id: '17', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: '2e semestre 2026', action: 'Continuer traitement les dents', fait: false },
+    { id: '18', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2027', action: 'Effectuer un examen complet', fait: false },
+    { id: '19', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2028', action: 'Effectuer un examen complet - poids 85kg', fait: false },
 
-    { id: '20', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: '2e semestre 2026', action: 'Lecture et intelligence artificielle - langue FR/AN' },
-    { id: '21', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2027', action: 'Lecture et intelligence artificielle - langue FR/AN' },
-    { id: '22', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2028', action: 'Lecture et intelligence artificielle - langue FR/AN' },
+    { id: '20', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: '2e semestre 2026', action: 'Lecture et intelligence artificielle - langue FR/AN', fait: false },
+    { id: '21', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2027', action: 'Lecture et intelligence artificielle - langue FR/AN', fait: false },
+    { id: '22', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2028', action: 'Lecture et intelligence artificielle - langue FR/AN', fait: false },
   ],
 };
 
@@ -116,6 +116,7 @@ type DataContextType = {
   upsertSalaireCategorie: (moisId: string, row: SalaireRow) => void;
   deleteSalaireCategorie: (moisId: string, id: string) => void;
   cloturerMoisSalaire: () => void;
+  toggleObjectifFait: (id: string) => void;
 };
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -140,10 +141,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             : parsed.salaire
             ? [{ id: '1', mois: 'Mai', salaireNet: 10000, categories: parsed.salaire }]
             : defaultData.salaireMois;
+          const objectifs = objectifsOutdated
+            ? defaultData.objectifs
+            : parsed.objectifs.map((o: any) => ({ fait: false, ...o }));
+          const credits = (parsed.credits ?? defaultData.credits).map((c: any) => ({ moisPayes: 0, ...c }));
           setData({
             ...parsed,
             salaireMois,
-            objectifs: objectifsOutdated ? defaultData.objectifs : parsed.objectifs,
+            credits,
+            objectifs,
           });
         } catch {}
       }
@@ -194,6 +200,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setData((prev) => ({ ...prev, [table]: (prev[table] as any[]).filter((r) => r.id !== id) }));
   }, []);
 
+  const toggleObjectifFait = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      objectifs: prev.objectifs.map((o) => (o.id === id ? { ...o, fait: !o.fait } : o)),
+    }));
+  }, []);
+
   const upsertSalaireCategorie = useCallback((moisId: string, row: SalaireRow) => {
     setData((prev) => ({
       ...prev,
@@ -241,6 +254,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         upsertSalaireCategorie,
         deleteSalaireCategorie,
         cloturerMoisSalaire,
+        toggleObjectifFait,
       }}
     >
       {children}
