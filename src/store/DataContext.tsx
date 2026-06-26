@@ -1,0 +1,152 @@
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isFirebaseConfigured } from '../firebase/config';
+import { watchAuth, watchRemoteData, pushRemoteData } from '../firebase/sync';
+
+export type SalaireRow = { id: string; categorie: string; pourcentage: number; prevu: number; reel: number };
+export type CreditRow = { id: string; nom: string; montant: number; taux: number; duree: number };
+export type EpargneRow = { id: string; mois: string; prevu: number; reel: number };
+export type ObjectifRow = { id: string; rubrique: string; action: string };
+
+type DataState = {
+  salaire: SalaireRow[];
+  credits: CreditRow[];
+  epargne: EpargneRow[];
+  objectifs: ObjectifRow[];
+};
+
+const defaultData: DataState = {
+  salaire: [
+    { id: '1', categorie: 'Logement', pourcentage: 30, prevu: 3000, reel: 1825 },
+    { id: '2', categorie: 'Alimentation', pourcentage: 15, prevu: 1500, reel: 1500 },
+    { id: '3', categorie: 'Transport', pourcentage: 10, prevu: 1000, reel: 700 },
+    { id: '4', categorie: 'Crédits / dettes', pourcentage: 10, prevu: 1000, reel: 1000 },
+    { id: '5', categorie: 'Épargne', pourcentage: 10, prevu: 1000, reel: 1000 },
+    { id: '6', categorie: 'Paradis', pourcentage: 5, prevu: 500, reel: 500 },
+    { id: '7', categorie: 'Loisirs / divers', pourcentage: 10, prevu: 1000, reel: 400 },
+    { id: '8', categorie: 'Santé / assurance', pourcentage: 5, prevu: 500, reel: 0 },
+    { id: '9', categorie: 'Imprévus', pourcentage: 5, prevu: 500, reel: 0 },
+  ],
+  credits: [
+    { id: '1', nom: 'MOUAD IMPOT', montant: 5000, taux: 5, duree: 7 },
+    { id: '2', nom: 'LAILA ARIDAL', montant: 1500, taux: 5, duree: 7 },
+    { id: '3', nom: 'SANAA ARIDAL', montant: 1800, taux: 5, duree: 7 },
+    { id: '4', nom: 'ZBAIDI ABDELHADI', montant: 1000, taux: 5, duree: 7 },
+    { id: '5', nom: 'BOUSSAGUI MOHAMMED', montant: 1000, taux: 5, duree: 7 },
+    { id: '6', nom: 'KHALI MOSTAFA', montant: 2100, taux: 5, duree: 12 },
+    { id: '7', nom: 'EL MAATI', montant: 2000, taux: 5, duree: 12 },
+    { id: '8', nom: 'ZBAIDI ABDELHADI', montant: 3250, taux: 5, duree: 12 },
+    { id: '9', nom: 'ZAKARIA CANADA', montant: 5000, taux: 5, duree: 12 },
+    { id: '10', nom: 'HAYAT ARIDAL', montant: 9000, taux: 5, duree: 12 },
+    { id: '11', nom: 'STE VIE', montant: 7350, taux: 5, duree: 12 },
+  ],
+  epargne: [
+    { id: '1', mois: 'Janvier', prevu: 1000, reel: 1000 },
+    { id: '2', mois: 'Février', prevu: 1000, reel: 1000 },
+    { id: '3', mois: 'Mars', prevu: 1000, reel: 1000 },
+    { id: '4', mois: 'Avril', prevu: 1000, reel: 1000 },
+    { id: '5', mois: 'Mai', prevu: 1000, reel: 1000 },
+    { id: '6', mois: 'Juin', prevu: 0, reel: 0 },
+    { id: '7', mois: 'Juillet', prevu: 0, reel: 0 },
+    { id: '8', mois: 'Août', prevu: 0, reel: 0 },
+    { id: '9', mois: 'Septembre', prevu: 0, reel: 0 },
+    { id: '10', mois: 'Octobre', prevu: 0, reel: 0 },
+    { id: '11', mois: 'Novembre', prevu: 0, reel: 0 },
+    { id: '12', mois: 'Décembre', prevu: 0, reel: 0 },
+  ],
+  objectifs: [
+    { id: '1', rubrique: 'Finance', action: 'Payer 1717 DH/mois crédit' },
+    { id: '2', rubrique: 'Santé', action: '2 séances natation/semaine' },
+    { id: '3', rubrique: 'Famille', action: '1 sortie famille/mois' },
+    { id: '4', rubrique: 'Religion', action: 'Suivi des 5 prières/jour' },
+    { id: '5', rubrique: 'Développement personnel', action: '1 livre + 2h IA + 2h langue/sem' },
+  ],
+};
+
+const STORAGE_KEY = 'objectifs-finance-data-v1';
+
+type DataContextType = {
+  data: DataState;
+  loaded: boolean;
+  cloudStatus: 'disabled' | 'connecting' | 'synced';
+  upsertRow: <K extends keyof DataState>(table: K, row: DataState[K][number]) => void;
+  deleteRow: (table: keyof DataState, id: string) => void;
+};
+
+const DataContext = createContext<DataContextType | null>(null);
+
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const [data, setData] = useState<DataState>(defaultData);
+  const [loaded, setLoaded] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'disabled' | 'connecting' | 'synced'>(
+    isFirebaseConfigured ? 'connecting' : 'disabled'
+  );
+  const uidRef = useRef<string | null>(null);
+  const applyingRemoteRef = useRef(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+      if (raw) {
+        try {
+          setData(JSON.parse(raw));
+        } catch {}
+      }
+      setLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (loaded) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [data, loaded]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    const unsubAuth = watchAuth((user) => {
+      if (!user) return;
+      uidRef.current = user.uid;
+      const unsubData = watchRemoteData(user.uid, (remote) => {
+        applyingRemoteRef.current = true;
+        setData(remote as DataState);
+        setCloudStatus('synced');
+      });
+      return unsubData;
+    });
+    return () => {
+      if (typeof unsubAuth === 'function') unsubAuth();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !isFirebaseConfigured || !uidRef.current) return;
+    if (applyingRemoteRef.current) {
+      applyingRemoteRef.current = false;
+      return;
+    }
+    pushRemoteData(uidRef.current, data).catch((e) => console.warn('Sync Firestore échouée', e));
+  }, [data, loaded]);
+
+  const upsertRow = useCallback(<K extends keyof DataState>(table: K, row: DataState[K][number]) => {
+    setData((prev) => {
+      const list = prev[table] as any[];
+      const idx = list.findIndex((r) => r.id === row.id);
+      const next = idx >= 0 ? list.map((r) => (r.id === row.id ? row : r)) : [...list, row];
+      return { ...prev, [table]: next };
+    });
+  }, []);
+
+  const deleteRow = useCallback((table: keyof DataState, id: string) => {
+    setData((prev) => ({ ...prev, [table]: (prev[table] as any[]).filter((r) => r.id !== id) }));
+  }, []);
+
+  return (
+    <DataContext.Provider value={{ data, loaded, cloudStatus, upsertRow, deleteRow }}>
+      {children}
+    </DataContext.Provider>
+  );
+}
+
+export function useData() {
+  const ctx = useContext(DataContext);
+  if (!ctx) throw new Error('useData must be used within DataProvider');
+  return ctx;
+}
