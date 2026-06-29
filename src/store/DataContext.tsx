@@ -231,6 +231,8 @@ type DataContextType = {
   deleteSalaireCategorie: (moisId: string, id: string) => void;
   togglePlanMensuelAction: (rowId: string, moisIndex: number) => void;
   toggleSemaineHebdo: (rowId: string, semaineIndex: number) => void;
+  upsertPlanHebdoRow: (id: string | null, rubrique: string, action: string) => void;
+  deletePlanHebdoRow: (id: string) => void;
 };
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -347,6 +349,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const upsertPlanHebdoRow = useCallback((id: string | null, rubrique: string, action: string) => {
+    setData((prev) => {
+      if (id) {
+        return {
+          ...prev,
+          planHebdo: prev.planHebdo.map((r) => (r.id === id ? { ...r, rubrique, action } : r)),
+        };
+      }
+      const nouveau: PlanHebdoRow = { id: String(Date.now()), rubrique, action, semaines: Array(26).fill(false) };
+      return { ...prev, planHebdo: [...prev.planHebdo, nouveau] };
+    });
+  }, []);
+
+  const deletePlanHebdoRow = useCallback((id: string) => {
+    setData((prev) => ({ ...prev, planHebdo: prev.planHebdo.filter((r) => r.id !== id) }));
+  }, []);
+
   const upsertSalaireCategorie = useCallback((moisId: string, row: SalaireRow) => {
     setData((prev) => ({
       ...prev,
@@ -381,6 +400,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         deleteSalaireCategorie,
         togglePlanMensuelAction,
         toggleSemaineHebdo,
+        upsertPlanHebdoRow,
+        deletePlanHebdoRow,
       }}
     >
       {children}
