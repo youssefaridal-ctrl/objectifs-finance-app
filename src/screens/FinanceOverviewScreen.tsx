@@ -29,11 +29,12 @@ export default function FinanceOverviewScreen() {
 
   const legend = categories.map((r, i) => ({ label: r.categorie, value: r.reel, color: palette[i % palette.length] }));
 
-  const rubriques = Array.from(new Set(data.objectifs.map((o) => o.rubrique)));
+  const rubriques = Array.from(new Set(data.planMensuel.map((r) => r.rubrique)));
   const avancementParRubrique = rubriques.map((rub) => {
-    const rows = data.objectifs.filter((o) => o.rubrique === rub);
-    const done = rows.filter((o) => o.fait).length;
-    return { rubrique: rub, percent: Math.round((done / rows.length) * 100), done, total: rows.length };
+    const rows = data.planMensuel.filter((r) => r.rubrique === rub);
+    const actions = rows.flatMap((r) => r.actions);
+    const done = actions.filter((a) => a.fait).length;
+    return { rubrique: rub, percent: Math.round((done / actions.length) * 100), done, total: actions.length };
   });
 
   return (
@@ -102,7 +103,7 @@ export default function FinanceOverviewScreen() {
           })}
         </Card>
 
-        <Text style={styles.sectionTitle}>Avancement des objectifs par rubrique</Text>
+        <Text style={styles.sectionTitle}>Avancement du plan mensuel par rubrique</Text>
         <Card>
           {avancementParRubrique.map((r) => (
             <View key={r.rubrique} style={{ marginBottom: 8 }}>

@@ -6,6 +6,8 @@ import RowFormModal from '../components/RowFormModal';
 import { colors, fonts } from '../theme';
 import { useData, ObjectifRow } from '../store/DataContext';
 import { isGoogleConfigured, useGoogleAuthRequest, createCalendarEvent } from '../calendar/googleCalendar';
+import PlanMensuelView from './PlanMensuelView';
+import PlanHebdoView from './PlanHebdoView';
 
 const rubriqueStyle: Record<string, { bg: string; color: string }> = {
   Finance: { bg: colors.blueBg, color: colors.blueText },
@@ -37,8 +39,34 @@ function groupItems(items: ObjectifRow[]) {
   return groups;
 }
 
+const TABS = ['3 ans', 'Plan mensuel', 'Plan hebdo'] as const;
+
 export default function ObjectifsScreen() {
-  const { data, upsertRow, deleteRow, toggleObjectifFait } = useData();
+  const [activeTab, setActiveTab] = useState<typeof TABS[number]>('3 ans');
+
+  return (
+    <View style={styles.container}>
+      <ScreenHeader title="Objectifs" subtitle="Stratégie 3 ans · suivi mensuel · suivi hebdomadaire" />
+      <View style={styles.tabBar}>
+        {TABS.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.tabBtn, activeTab === t && styles.tabBtnActive]}
+            onPress={() => setActiveTab(t)}
+          >
+            <Text style={[styles.tabBtnText, activeTab === t && styles.tabBtnTextActive]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {activeTab === '3 ans' && <TroisAnsView />}
+      {activeTab === 'Plan mensuel' && <PlanMensuelView />}
+      {activeTab === 'Plan hebdo' && <PlanHebdoView />}
+    </View>
+  );
+}
+
+function TroisAnsView() {
+  const { data, upsertRow, deleteRow } = useData();
   const items = data.objectifs;
   const groups = groupItems(items);
   const [editing, setEditing] = useState<ObjectifRow | null>(null);
@@ -93,49 +121,25 @@ export default function ObjectifsScreen() {
       objectifGlobal: values.objectifGlobal,
       periode: values.periode,
       action: values.action,
-      fait: editing?.fait ?? false,
     });
     setShowModal(false);
   };
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader title="Objectifs 3 ans" subtitle="2026 → 2028 · par semestre" />
+    <>
       <ScrollView contentContainerStyle={styles.content}>
         {groups.map((g) => {
           const style = rubriqueStyle[g.rubrique] ?? { bg: colors.background, color: colors.textPrimary };
-          const doneCount = g.rows.filter((r) => r.fait).length;
-          const avancement = Math.round((doneCount / g.rows.length) * 100);
           return (
             <View key={g.rubrique + g.objectifGlobal} style={[styles.groupCard, { backgroundColor: style.bg }]}>
-              <View style={styles.rowBetween}>
-                <Text style={[styles.rubriqueLabel, { color: style.color }]}>{g.rubrique}</Text>
-                <Text style={[styles.avancement, { color: style.color }]}>{avancement}%</Text>
-              </View>
+              <Text style={[styles.rubriqueLabel, { color: style.color }]}>{g.rubrique}</Text>
               <Text style={[styles.objectifGlobal, { color: style.color }]}>{g.objectifGlobal}</Text>
               {g.rows.map((row) => (
-                <View key={row.id} style={styles.periodRow}>
-                  <TouchableOpacity onPress={() => toggleObjectifFait(row.id)}>
-                    <Ionicons
-                      name={row.fait ? 'checkbox' : 'square-outline'}
-                      size={16}
-                      color={style.color}
-                    />
-                  </TouchableOpacity>
+                <TouchableOpacity key={row.id} style={styles.periodRow} onPress={() => openEdit(row)}>
                   <Text style={[styles.periode, { color: style.color }]}>{row.periode}</Text>
-                  <Text
-                    style={[
-                      styles.action,
-                      { color: style.color },
-                      row.fait ? { textDecorationLine: 'line-through', opacity: 0.6 } : null,
-                    ]}
-                  >
-                    {row.action}
-                  </Text>
-                  <TouchableOpacity onPress={() => openEdit(row)}>
-                    <Ionicons name="create-outline" size={13} color={style.color} />
-                  </TouchableOpacity>
-                </View>
+                  <Text style={[styles.action, { color: style.color }]}>{row.action}</Text>
+                  <Ionicons name="create-outline" size={13} color={style.color} />
+                </TouchableOpacity>
               ))}
             </View>
           );
@@ -175,17 +179,20 @@ export default function ObjectifsScreen() {
               }
         }
       />
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 32 },
+  tabBar: { flexDirection: 'row', backgroundColor: colors.card, paddingHorizontal: 12, paddingTop: 10, gap: 8, borderBottomWidth: 1, borderBottomColor: colors.cardBorder },
+  tabBtn: { paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabBtnActive: { borderBottomColor: colors.blueAccent },
+  tabBtnText: { fontSize: 12, color: colors.textSecondary, fontFamily: fonts.regular },
+  tabBtnTextActive: { color: colors.blueAccent, fontWeight: '700' },
   groupCard: { borderRadius: 10, padding: 12, marginBottom: 10 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rubriqueLabel: { fontSize: 13, fontWeight: '700', fontFamily: fonts.bold },
-  avancement: { fontSize: 12, fontWeight: '700' },
   objectifGlobal: { fontSize: 11, marginTop: 2, marginBottom: 8, fontFamily: fonts.regular, opacity: 0.9 },
   periodRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 5, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.07)' },
   periode: { fontSize: 11, fontWeight: '700', width: 110 },

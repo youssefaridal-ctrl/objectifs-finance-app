@@ -7,13 +7,18 @@ export type SalaireRow = { id: string; categorie: string; pourcentage: number; p
 export type SalaireMonth = { id: string; mois: string; salaireNet: number; categories: SalaireRow[] };
 export type CreditRow = { id: string; nom: string; montant: number; taux: number; duree: number; moisPayes: number };
 export type EpargneRow = { id: string; mois: string; prevu: number; reel: number };
-export type ObjectifRow = { id: string; rubrique: string; objectifGlobal: string; periode: string; action: string; fait: boolean };
+export type ObjectifRow = { id: string; rubrique: string; objectifGlobal: string; periode: string; action: string };
+export type PlanMensuelAction = { mois: string; action: string; fait: boolean };
+export type PlanMensuelRow = { id: string; rubrique: string; sousRubrique: string; actions: PlanMensuelAction[] };
+export type PlanHebdoRow = { id: string; rubrique: string; action: string; semaines: boolean[] };
 
 type DataState = {
   salaireMois: SalaireMonth[];
   credits: CreditRow[];
   epargne: EpargneRow[];
   objectifs: ObjectifRow[];
+  planMensuel: PlanMensuelRow[];
+  planHebdo: PlanHebdoRow[];
 };
 
 const MOIS_ORDRE = [
@@ -74,34 +79,122 @@ const defaultData: DataState = {
     { id: '12', mois: 'Décembre', prevu: 0, reel: 0 },
   ],
   objectifs: [
-    { id: '1', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2026', action: 'Payer 10 300 DH crédit', fait: false },
-    { id: '2', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '1er semestre 2027', action: 'Payer 14 700 DH crédit + 6 000 DH Omra', fait: false },
-    { id: '3', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2027', action: 'Payer 14 700 DH crédit + 10 000 DH Omra', fait: false },
-    { id: '4', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: 'Année 2028', action: 'Voiture + 30 000 DH de réserve', fait: false },
+    { id: '1', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2026', action: 'Payer 10 300 DH crédit' },
+    { id: '2', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '1er semestre 2027', action: 'Payer 14 700 DH crédit + 6 000 DH Omra' },
+    { id: '3', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: '2e semestre 2027', action: 'Payer 14 700 DH crédit + 10 000 DH Omra' },
+    { id: '4', rubrique: 'Finance', objectifGlobal: 'Éliminer complètement la dette et frais Omra', periode: 'Année 2028', action: 'Voiture + 30 000 DH de réserve' },
 
-    { id: '5', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: '2e semestre 2026', action: 'Blogging + cuisines + nouveau challenge', fait: false },
-    { id: '6', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2027', action: 'Blogging + cuisines', fait: false },
-    { id: '7', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2028', action: 'Créer ma propre entreprise', fait: false },
+    { id: '5', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: '2e semestre 2026', action: 'Blogging + cuisines + nouveau challenge' },
+    { id: '6', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2027', action: 'Blogging + cuisines' },
+    { id: '7', rubrique: 'Finance', objectifGlobal: 'Source de revenus secondaire', periode: 'Année 2028', action: 'Créer ma propre entreprise' },
 
-    { id: '8', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: '2e semestre 2026', action: 'Nutrition healthy - natation', fait: false },
-    { id: '9', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2027', action: 'Salle de sport - natation - cyclisme', fait: false },
-    { id: '10', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2028', action: 'Habitude sport et nutrition', fait: false },
+    { id: '8', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: '2e semestre 2026', action: 'Nutrition healthy - natation' },
+    { id: '9', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2027', action: 'Salle de sport - natation - cyclisme' },
+    { id: '10', rubrique: 'Santé', objectifGlobal: 'Perte de poids', periode: 'Année 2028', action: 'Habitude sport et nutrition' },
 
-    { id: '11', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: '2e semestre 2026', action: 'Voyages - sortie - déconnecter après 19h et le weekend', fait: false },
-    { id: '12', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2027', action: 'Voyages - lecture - natation ensemble', fait: false },
-    { id: '13', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2028', action: 'Voyages - lecture - natation ensemble', fait: false },
+    { id: '11', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: '2e semestre 2026', action: 'Voyages - sortie - déconnecter après 19h et le weekend' },
+    { id: '12', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2027', action: 'Voyages - lecture - natation ensemble' },
+    { id: '13', rubrique: 'Famille', objectifGlobal: 'Passer plus de temps & de qualité en famille', periode: 'Année 2028', action: 'Voyages - lecture - natation ensemble' },
 
-    { id: '14', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: '2e semestre 2026', action: '5 prières quotidiennes', fait: false },
-    { id: '15', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2027', action: '5 prières quotidiennes à l\'heure et à la mosquée', fait: false },
-    { id: '16', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2028', action: 'Mémoriser le Saint Coran', fait: false },
+    { id: '14', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: '2e semestre 2026', action: '5 prières quotidiennes' },
+    { id: '15', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2027', action: '5 prières quotidiennes à l\'heure et à la mosquée' },
+    { id: '16', rubrique: 'Religion', objectifGlobal: 'Accomplir régulièrement les 5 prières quotidiennes à l\'heure et à la mosquée', periode: 'Année 2028', action: 'Mémoriser le Saint Coran' },
 
-    { id: '17', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: '2e semestre 2026', action: 'Continuer traitement les dents', fait: false },
-    { id: '18', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2027', action: 'Effectuer un examen complet', fait: false },
-    { id: '19', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2028', action: 'Effectuer un examen complet - poids 85kg', fait: false },
+    { id: '17', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: '2e semestre 2026', action: 'Continuer traitement les dents' },
+    { id: '18', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2027', action: 'Effectuer un examen complet' },
+    { id: '19', rubrique: 'Santé', objectifGlobal: 'Examens médicaux réguliers', periode: 'Année 2028', action: 'Effectuer un examen complet - poids 85kg' },
 
-    { id: '20', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: '2e semestre 2026', action: 'Lecture et intelligence artificielle - langue FR/AN', fait: false },
-    { id: '21', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2027', action: 'Lecture et intelligence artificielle - langue FR/AN', fait: false },
-    { id: '22', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2028', action: 'Lecture et intelligence artificielle - langue FR/AN', fait: false },
+    { id: '20', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: '2e semestre 2026', action: 'Lecture et intelligence artificielle - langue FR/AN' },
+    { id: '21', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2027', action: 'Lecture et intelligence artificielle - langue FR/AN' },
+    { id: '22', rubrique: 'Développement personnel', objectifGlobal: 'Développement', periode: 'Année 2028', action: 'Lecture et intelligence artificielle - langue FR/AN' },
+  ],
+  planMensuel: [
+    {
+      id: '1', rubrique: 'Finance', sousRubrique: 'Crédit (10300DH)',
+      actions: [
+        { mois: 'Juillet', action: 'Payer 1717 DH', fait: false },
+        { mois: 'Août', action: 'Payer 1717 DH', fait: false },
+        { mois: 'Septembre', action: 'Payer 1717 DH', fait: false },
+        { mois: 'Octobre', action: 'Payer 1717 DH', fait: false },
+        { mois: 'Novembre', action: 'Payer 1716 DH', fait: false },
+        { mois: 'Décembre', action: 'Payer 1716 DH', fait: false },
+      ],
+    },
+    {
+      id: '2', rubrique: 'Finance', sousRubrique: 'Source de revenus secondaire',
+      actions: [
+        { mois: 'Juillet', action: 'Lancer le blog (plateforme + 1er article)', fait: false },
+        { mois: 'Août', action: 'Publier 4 recettes cuisine', fait: false },
+        { mois: 'Septembre', action: 'Activer monétisation (pub/affiliation)', fait: false },
+        { mois: 'Octobre', action: 'Lancer le nouveau challenge', fait: false },
+        { mois: 'Novembre', action: 'Consolider audience réseaux sociaux', fait: false },
+        { mois: 'Décembre', action: 'Bilan revenu secondaire + ajuster stratégie', fait: false },
+      ],
+    },
+    {
+      id: '3', rubrique: 'Santé', sousRubrique: 'Perte de poids',
+      actions: [
+        { mois: 'Juillet', action: 'Bilan poids initial + plan nutrition', fait: false },
+        { mois: 'Août', action: '2 séances natation/semaine + suivi calories', fait: false },
+        { mois: 'Septembre', action: 'Ajuster nutrition, poursuivre natation', fait: false },
+        { mois: 'Octobre', action: 'Poursuivre habitudes nutrition/natation', fait: false },
+        { mois: 'Novembre', action: 'Poursuivre habitudes nutrition/natation', fait: false },
+        { mois: 'Décembre', action: 'Bilan semestriel poids', fait: false },
+      ],
+    },
+    {
+      id: '4', rubrique: 'Famille', sousRubrique: 'Temps & qualité en famille',
+      actions: [
+        { mois: 'Juillet', action: '1 sortie/voyage en famille', fait: false },
+        { mois: 'Août', action: 'Sortie famille + déconnexion après 19h', fait: false },
+        { mois: 'Septembre', action: 'Sortie famille + déconnexion weekend', fait: false },
+        { mois: 'Octobre', action: 'Sortie famille + déconnexion weekend', fait: false },
+        { mois: 'Novembre', action: 'Sortie famille + déconnexion weekend', fait: false },
+        { mois: 'Décembre', action: 'Bilan + planifier 2027', fait: false },
+      ],
+    },
+    {
+      id: '5', rubrique: 'Religion', sousRubrique: 'Cinq prières quotidiennes',
+      actions: [
+        { mois: 'Juillet', action: 'Suivi quotidien des 5 prières', fait: false },
+        { mois: 'Août', action: 'Suivi quotidien des 5 prières', fait: false },
+        { mois: 'Septembre', action: 'Suivi quotidien des 5 prières', fait: false },
+        { mois: 'Octobre', action: 'Suivi quotidien des 5 prières', fait: false },
+        { mois: 'Novembre', action: 'Suivi quotidien des 5 prières', fait: false },
+        { mois: 'Décembre', action: 'Bilan assiduité prières', fait: false },
+      ],
+    },
+    {
+      id: '6', rubrique: 'Santé', sousRubrique: 'Traitement dents',
+      actions: [
+        { mois: 'Juillet', action: 'RDV dentiste - 1ère séance', fait: false },
+        { mois: 'Août', action: 'Poursuite traitement', fait: false },
+        { mois: 'Septembre', action: 'Poursuite traitement', fait: false },
+        { mois: 'Octobre', action: 'Poursuite traitement', fait: false },
+        { mois: 'Novembre', action: 'Poursuite traitement', fait: false },
+        { mois: 'Décembre', action: 'Finaliser traitement dents', fait: false },
+      ],
+    },
+    {
+      id: '7', rubrique: 'Développement personnel', sousRubrique: 'Lecture, IA & Langues',
+      actions: [
+        { mois: 'Juillet', action: '1 livre + 2h IA + 2h langue', fait: false },
+        { mois: 'Août', action: '1 livre + 2h IA + 2h langue', fait: false },
+        { mois: 'Septembre', action: '1 livre + 2h IA + 2h langue', fait: false },
+        { mois: 'Octobre', action: '1 livre + 2h IA + 2h langue', fait: false },
+        { mois: 'Novembre', action: '1 livre + 2h IA + 2h langue', fait: false },
+        { mois: 'Décembre', action: 'Bilan développement personnel', fait: false },
+      ],
+    },
+  ],
+  planHebdo: [
+    { id: '1', rubrique: 'Finance', action: 'Épargner pour le crédit (~396DH/sem)', semaines: Array(26).fill(false) },
+    { id: '2', rubrique: 'Finance', action: 'Action concrète blog/cuisine/challenge', semaines: Array(26).fill(false) },
+    { id: '3', rubrique: 'Santé', action: 'Séance(s) natation + nutrition healthy', semaines: Array(26).fill(false) },
+    { id: '4', rubrique: 'Famille', action: 'Moment de qualité en famille / déconnexion', semaines: Array(26).fill(false) },
+    { id: '5', rubrique: 'Religion', action: 'Cinq prières quotidiennes (jours respectés/7)', semaines: Array(26).fill(false) },
+    { id: '6', rubrique: 'Santé', action: 'Suivi traitement dents', semaines: Array(26).fill(false) },
+    { id: '7', rubrique: 'Développement personnel', action: 'Lecture / IA / Langue FR-AN', semaines: Array(26).fill(false) },
   ],
 };
 
@@ -111,12 +204,16 @@ type DataContextType = {
   data: DataState;
   loaded: boolean;
   cloudStatus: 'disabled' | 'connecting' | 'synced';
-  upsertRow: <K extends Exclude<keyof DataState, 'salaireMois'>>(table: K, row: DataState[K][number]) => void;
-  deleteRow: (table: Exclude<keyof DataState, 'salaireMois'>, id: string) => void;
+  upsertRow: <K extends Exclude<keyof DataState, 'salaireMois' | 'planMensuel' | 'planHebdo'>>(
+    table: K,
+    row: DataState[K][number]
+  ) => void;
+  deleteRow: (table: Exclude<keyof DataState, 'salaireMois' | 'planMensuel' | 'planHebdo'>, id: string) => void;
   upsertSalaireCategorie: (moisId: string, row: SalaireRow) => void;
   deleteSalaireCategorie: (moisId: string, id: string) => void;
   cloturerMoisSalaire: () => void;
-  toggleObjectifFait: (id: string) => void;
+  togglePlanMensuelAction: (rowId: string, moisIndex: number) => void;
+  toggleSemaineHebdo: (rowId: string, semaineIndex: number) => void;
 };
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -141,15 +238,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             : parsed.salaire
             ? [{ id: '1', mois: 'Mai', salaireNet: 10000, categories: parsed.salaire }]
             : defaultData.salaireMois;
-          const objectifs = objectifsOutdated
-            ? defaultData.objectifs
-            : parsed.objectifs.map((o: any) => ({ fait: false, ...o }));
+          const objectifs = objectifsOutdated ? defaultData.objectifs : parsed.objectifs;
           const credits = (parsed.credits ?? defaultData.credits).map((c: any) => ({ moisPayes: 0, ...c }));
+          const planMensuel = parsed.planMensuel?.length ? parsed.planMensuel : defaultData.planMensuel;
+          const planHebdo = parsed.planHebdo?.length ? parsed.planHebdo : defaultData.planHebdo;
           setData({
             ...parsed,
             salaireMois,
             credits,
             objectifs,
+            planMensuel,
+            planHebdo,
           });
         } catch {}
       }
@@ -196,14 +295,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const deleteRow = useCallback((table: Exclude<keyof DataState, 'salaireMois'>, id: string) => {
-    setData((prev) => ({ ...prev, [table]: (prev[table] as any[]).filter((r) => r.id !== id) }));
-  }, []);
+  const deleteRow = useCallback(
+    (table: Exclude<keyof DataState, 'salaireMois' | 'planMensuel' | 'planHebdo'>, id: string) => {
+      setData((prev) => ({ ...prev, [table]: (prev[table] as any[]).filter((r) => r.id !== id) }));
+    },
+    []
+  );
 
-  const toggleObjectifFait = useCallback((id: string) => {
+  const togglePlanMensuelAction = useCallback((rowId: string, moisIndex: number) => {
     setData((prev) => ({
       ...prev,
-      objectifs: prev.objectifs.map((o) => (o.id === id ? { ...o, fait: !o.fait } : o)),
+      planMensuel: prev.planMensuel.map((r) =>
+        r.id !== rowId
+          ? r
+          : { ...r, actions: r.actions.map((a, i) => (i === moisIndex ? { ...a, fait: !a.fait } : a)) }
+      ),
+    }));
+  }, []);
+
+  const toggleSemaineHebdo = useCallback((rowId: string, semaineIndex: number) => {
+    setData((prev) => ({
+      ...prev,
+      planHebdo: prev.planHebdo.map((r) =>
+        r.id !== rowId
+          ? r
+          : { ...r, semaines: r.semaines.map((s, i) => (i === semaineIndex ? !s : s)) }
+      ),
     }));
   }, []);
 
@@ -254,7 +371,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         upsertSalaireCategorie,
         deleteSalaireCategorie,
         cloturerMoisSalaire,
-        toggleObjectifFait,
+        togglePlanMensuelAction,
+        toggleSemaineHebdo,
       }}
     >
       {children}
