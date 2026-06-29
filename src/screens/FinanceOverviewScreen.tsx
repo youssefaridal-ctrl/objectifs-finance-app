@@ -19,7 +19,7 @@ const rubriqueColor: Record<string, string> = {
 
 export default function FinanceOverviewScreen() {
   const { data } = useData();
-  const moisCourant = data.salaireMois[0];
+  const moisCourant = data.salaireMois[new Date().getMonth()] ?? data.salaireMois[0];
   const categories = moisCourant?.categories ?? [];
   const salaireNet = moisCourant?.salaireNet ?? 0;
   const salaireTotal = categories.reduce((s, r) => s + r.prevu, 0);

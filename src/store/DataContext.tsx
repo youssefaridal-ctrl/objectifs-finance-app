@@ -32,25 +32,43 @@ export function moisSuivant(mois: string): string {
   return MOIS_ORDRE[(idx + 1) % MOIS_ORDRE.length];
 }
 
+export function moisIndex(mois: string): number {
+  return MOIS_ORDRE.findIndex((m) => m.toLowerCase() === mois.trim().toLowerCase());
+}
+
+export function isMoisVerrouille(mois: string): boolean {
+  return moisIndex(mois) < new Date().getMonth();
+}
+
+const TEMPLATE_CATEGORIES: Omit<SalaireRow, 'id' | 'reel'>[] = [
+  { categorie: 'Logement', pourcentage: 30, prevu: 3000 },
+  { categorie: 'Alimentation', pourcentage: 15, prevu: 1500 },
+  { categorie: 'Transport', pourcentage: 10, prevu: 1000 },
+  { categorie: 'Crédits / dettes', pourcentage: 10, prevu: 1000 },
+  { categorie: 'Épargne', pourcentage: 10, prevu: 1000 },
+  { categorie: 'Paradis', pourcentage: 5, prevu: 500 },
+  { categorie: 'Loisirs / divers', pourcentage: 10, prevu: 1000 },
+  { categorie: 'Santé / assurance', pourcentage: 5, prevu: 500 },
+  { categorie: 'Imprévus', pourcentage: 5, prevu: 500 },
+];
+
+const REEL_MAI: number[] = [1825, 1500, 700, 1000, 1000, 500, 400, 0, 0];
+
+function buildAnnee(): SalaireMonth[] {
+  return MOIS_ORDRE.map((mois, moisIdx) => ({
+    id: String(moisIdx + 1),
+    mois,
+    salaireNet: 10000,
+    categories: TEMPLATE_CATEGORIES.map((c, i) => ({
+      ...c,
+      id: `${moisIdx + 1}-${i + 1}`,
+      reel: mois === 'Mai' ? REEL_MAI[i] : 0,
+    })),
+  }));
+}
+
 const defaultData: DataState = {
-  salaireMois: [
-    {
-      id: '1',
-      mois: 'Mai',
-      salaireNet: 10000,
-      categories: [
-        { id: '1', categorie: 'Logement', pourcentage: 30, prevu: 3000, reel: 1825 },
-        { id: '2', categorie: 'Alimentation', pourcentage: 15, prevu: 1500, reel: 1500 },
-        { id: '3', categorie: 'Transport', pourcentage: 10, prevu: 1000, reel: 700 },
-        { id: '4', categorie: 'Crédits / dettes', pourcentage: 10, prevu: 1000, reel: 1000 },
-        { id: '5', categorie: 'Épargne', pourcentage: 10, prevu: 1000, reel: 1000 },
-        { id: '6', categorie: 'Paradis', pourcentage: 5, prevu: 500, reel: 500 },
-        { id: '7', categorie: 'Loisirs / divers', pourcentage: 10, prevu: 1000, reel: 400 },
-        { id: '8', categorie: 'Santé / assurance', pourcentage: 5, prevu: 500, reel: 0 },
-        { id: '9', categorie: 'Imprévus', pourcentage: 5, prevu: 500, reel: 0 },
-      ],
-    },
-  ],
+  salaireMois: buildAnnee(),
   credits: [
     { id: '1', nom: 'MOUAD IMPOT', montant: 5000, taux: 5, duree: 7, moisPayes: 0 },
     { id: '2', nom: 'LAILA ARIDAL', montant: 1500, taux: 5, duree: 7, moisPayes: 0 },
@@ -211,7 +229,6 @@ type DataContextType = {
   deleteRow: (table: Exclude<keyof DataState, 'salaireMois' | 'planMensuel' | 'planHebdo'>, id: string) => void;
   upsertSalaireCategorie: (moisId: string, row: SalaireRow) => void;
   deleteSalaireCategorie: (moisId: string, id: string) => void;
-  cloturerMoisSalaire: () => void;
   togglePlanMensuelAction: (rowId: string, moisIndex: number) => void;
   toggleSemaineHebdo: (rowId: string, semaineIndex: number) => void;
 };
@@ -233,11 +250,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(raw);
           const objectifsOutdated = !parsed.objectifs?.length || !('periode' in parsed.objectifs[0]);
-          const salaireMois = parsed.salaireMois?.length
-            ? parsed.salaireMois
-            : parsed.salaire
-            ? [{ id: '1', mois: 'Mai', salaireNet: 10000, categories: parsed.salaire }]
-            : defaultData.salaireMois;
+          let salaireMois: SalaireMonth[] = defaultData.salaireMois;
+          if (parsed.salaireMois?.length === 12) {
+            salaireMois = parsed.salaireMois;
+          } else if (parsed.salaireMois?.length) {
+            const base = buildAnnee();
+            salaireMois = base.map(
+              (m) => (parsed.salaireMois as SalaireMonth[]).find((old) => old.mois === m.mois) ?? m
+            );
+          } else if (parsed.salaire) {
+            salaireMois = buildAnnee().map((m) => (m.mois === 'Mai' ? { ...m, categories: parsed.salaire } : m));
+          }
           const objectifs = objectifsOutdated ? defaultData.objectifs : parsed.objectifs;
           const credits = (parsed.credits ?? defaultData.credits).map((c: any) => ({ moisPayes: 0, ...c }));
           const planMensuel = parsed.planMensuel?.length ? parsed.planMensuel : defaultData.planMensuel;
@@ -346,20 +369,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const cloturerMoisSalaire = useCallback(() => {
-    setData((prev) => {
-      const current = prev.salaireMois[0];
-      if (!current) return prev;
-      const nouveauMois: SalaireMonth = {
-        id: String(Date.now()),
-        mois: moisSuivant(current.mois),
-        salaireNet: current.salaireNet,
-        categories: current.categories.map((c) => ({ ...c, id: `${Date.now()}-${c.id}`, reel: 0 })),
-      };
-      return { ...prev, salaireMois: [nouveauMois, ...prev.salaireMois] };
-    });
-  }, []);
-
   return (
     <DataContext.Provider
       value={{
@@ -370,7 +379,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         deleteRow,
         upsertSalaireCategorie,
         deleteSalaireCategorie,
-        cloturerMoisSalaire,
         togglePlanMensuelAction,
         toggleSemaineHebdo,
       }}
